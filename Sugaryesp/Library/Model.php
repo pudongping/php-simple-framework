@@ -191,7 +191,7 @@ abstract class Model extends DB
         if ($this->autoWriteTimestamp) {
             $input = array_merge($input, [$this->updateTime => date('Y-m-d H:i:s')]);
         }
-        return $this->fetchSql()->update($input);
+        return $this->update($input);
     }
 
     public function __get($field)

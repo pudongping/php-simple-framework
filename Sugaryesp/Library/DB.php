@@ -41,6 +41,11 @@ class DB
     public $where = ['1=1'];
 
     /**
+     * @var or_where 条件
+     */
+    protected $or_where;
+
+    /**
      * @var 当前是 CRUD 中的哪一种查询 insert|select|update|delete
      */
     protected $action;
@@ -118,6 +123,43 @@ class DB
             $sql = '`' . trim($field) . '`' . ' ' . $exp . '"' . trim($value) . '"';
         }
         $this->where = array_merge($this->where, [$sql]);
+        return $this;
+    }
+
+    /**
+     * 拼接 or where 条件语句
+     *
+     * @param null $field  字段名
+     * @param null $exp  表达式
+     * @param null $value  字段值
+     * @return $this
+     * @throws \Exception
+     */
+    public function orWhere($field = null, $exp = null, $value = null)
+    {
+        if (is_null($field) || is_null($exp)) {
+            throw new \Exception('Mysqli ERR: => The field must have !');
+        }
+
+        if (is_null($value)) {
+            // 当不传第三个参数的时候，默认第二个参数为所需要查询的值，此时的表达式为 =
+            $sql = '`' . trim($field) . '`' . ' = "' . trim($exp) . '"';
+        } else {
+            // 当三个参数都具备时
+            $sql = '`' . trim($field) . '`' . ' ' . $exp . ' "' . trim($value) . '" ';
+        }
+
+        $orWhereSql = '';
+        if (!$this->or_where) {
+            // 当此时并没有 orWhere 条件语句时
+            $orWhereSql = ' and 1=1 or ' . $sql;
+        } else {
+            $orWhereSql = $this->or_where;
+            $orWhereSql .= ' or ' . $sql;
+        }
+
+        $this->or_where = $orWhereSql;
+
         return $this;
     }
 
@@ -283,6 +325,17 @@ class DB
                 $whereStrSql .= ' and ' . $where;
             }
             $whereStrSql = str_replace(' and 1=1 and', ' where ', $whereStrSql);
+        }
+
+        // 如果此时有 or_where 条件语句时
+        if ($this->or_where) {
+            $orWhereSql = str_replace(' and 1=1 or', ' ', $this->or_where);
+            // 此时的 where 语句为空时，则表示只有 orwhere 语句
+            if ('and 1=1' === trim($whereStrSql)) {
+                $whereStrSql = ' where ( ' . $orWhereSql . ' ) ';
+            } else {
+                $whereStrSql .= ' and ( ' . $orWhereSql . ' ) ';
+            }
         }
 
         switch ($this->action) {
